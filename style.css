@@ -1,0 +1,164 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+::-webkit-scrollbar {
+  background: rgba(0, 0, 0, 0.3);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.wraper {
+  background-image: linear-gradient(
+      135deg,
+      rgba(0, 0, 255, 0.1),
+      rgba(0, 0, 0, 0.7)
+    ),
+    url(images/person.jpg);
+
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: cover;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 100px;
+  height: 100vh;
+}
+.wraper h2 {
+  padding: 10px;
+  width: 75%;
+  background: rgba(0, 0, 0, 0.7);
+  color: azure;
+}
+.wraper .input-text {
+  padding: 0.5em;
+}
+.wraper .todo-container {
+  margin-right: 50px;
+  padding: 0.5em;
+  overflow-y: scroll;
+}
+.todo-container h2 {
+  position: sticky;
+  width: 100%;
+  top: 0%;
+  background: rgba(0, 0, 0, 0.7);
+  color: azure;
+}
+
+form {
+  display: flex;
+  height: 50px;
+}
+form input,
+.todo li {
+  width: 75%;
+  font-size: 1.5rem;
+  padding: 0 0.5rem;
+  background: white;
+}
+.add-btn {
+  padding: 10px;
+}
+.add-btn:hover svg {
+  fill: rgb(1, 96, 186);
+}
+button {
+  cursor: pointer;
+  border: none;
+  background: white;
+}
+.todo > li,
+.todo > button {
+  background-color: rgba(22, 22, 116, 0.589);
+  color: aquamarine;
+}
+
+.todo {
+  display: flex;
+  margin-bottom: 10px;
+  transition: all 0.5s ease;
+}
+.delete-anime {
+  filter: blur(10px);
+  opacity: 0.5;
+  transform: scale(0) translateY(8rem) rotateZ(30deg);
+}
+.delete-anime > li,
+.delete-anime button {
+  background-color: rgba(255, 99, 71, 0.5);
+}
+
+.check-anime > li,
+.check-anime button {
+  text-decoration: line-through;
+  background-color: rgba(11, 238, 22, 0.2);
+  opacity: 0.8;
+  color: rgba(0, 0, 0, 0.5);
+}
+.errorfill h2 {
+  display: flex;
+  justify-content: center;
+  background: rgba(255, 99, 71, 0.425);
+  color: black;
+  text-align: center;
+}
+
+.todo li {
+  list-style: none;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.todo svg {
+  margin: 5px;
+}
+.todo button {
+  padding: 2px;
+}
+.todo button:hover {
+  background: rgb(1, 96, 186);
+}
+.trash-btn:hover svg {
+  fill: tomato;
+}
+.completed-btn:hover svg {
+  fill: yellowgreen;
+}
+svg {
+  pointer-events: none;
+}
+
+.select div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 75%;
+}
+.select div > option {
+  background: rgba(255, 99, 71, 0.5);
+  padding: 1rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-variant: small-caps;
+}
+.select div > option:nth-child(1) {
+  background: #0a97b0;
+}
+.select div > option:nth-child(1):hover {
+  background: rgba(10, 151, 176, 0.5);
+}
+.select div > option:nth-child(2) {
+  background: #4cd3c2;
+}
+.select div > option:nth-child(2):hover {
+  background: rgba(76, 211, 194, 0.5);
+}
+.select div > option:nth-child(3) {
+  background: #f54291;
+}
+.select div > option:nth-child(3):hover {
+  background: rgba(245, 66, 145, 0.5);
+}
