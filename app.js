@@ -5,7 +5,7 @@ const todoList = document.querySelector(".todo-list");
 const todoOption = document.querySelector(".filter-todo");
 
 const d = new Date();
-const Mo = d.getUTCMonth();
+const Mo = d.getUTCMonth()+1;
 const days = [
   "Sunday",
   "Monday",
