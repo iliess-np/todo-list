@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power Task - Productivity Dashboard</title>
+    <!-- Favicon (Inline SVG Checkmark Badge) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2316a34a'/><path d='M28 50 L42 64 L72 34' stroke='white' stroke-width='12' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(150, 150, 150, 0.05);
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(150, 150, 150, 0.25);
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(150, 150, 150, 0.4);
+        }
+
+        /* STRICT REQUIREMENT: Completed task 10% opacity + line-through */
+        .task-completed {
+            opacity: 0.10 !important;
+            filter: grayscale(80%);
+            transition: opacity 0.2s ease, filter 0.2s ease;
+        }
+        .task-completed .task-title {
+            text-decoration: line-through;
+        }
+        .task-completed:hover {
+            opacity: 0.35 !important; /* Slightly raise on direct hover for usability */
+        }
+
+        /* Custom Checkbox Toggle Styling */
+        .custom-task-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #64748b;
+            border-radius: 0.375rem;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            background-color: transparent;
+            flex-shrink: 0;
+            margin-top: 0.125rem;
+        }
+        .custom-task-checkbox:hover {
+            border-color: #22c55e;
+            transform: scale(1.08);
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+        }
+        .custom-task-checkbox:checked {
+            background-color: #22c55e;
+            border-color: #22c55e;
+        }
+        .custom-task-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 0.35rem;
+            top: 0.125rem;
+            width: 0.35rem;
+            height: 0.65rem;
+            border: solid #020617;
+            border-width: 0 2.5px 2.5px 0;
+            transform: rotate(45deg);
+            animation: checkmarkPop 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes checkmarkPop {
+            from { opacity: 0; transform: rotate(45deg) scale(0.6); }
+            to { opacity: 1; transform: rotate(45deg) scale(1); }
+        }
+
+        /* Drag & Drop Visuals */
+        .dragging {
+            opacity: 0.4 !important;
+            border: 2px dashed #22c55e !important;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px) scale(0.99); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Toast Popup */
+        #toastContainer {
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            animation: toastIn 0.25s ease forwards;
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased dark:bg-slate-950 dark:text-slate-100 bg-slate-50 text-slate-900 transition-colors duration-300">
+
+    <!-- Top App Navigation Bar -->
+    <header class="border-b border-slate-800 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <!-- App Branding -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-list-check text-slate-950 text-lg font-bold"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none flex items-center gap-2">
+                        <span>PowerTask</span>
+                        <span class="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20">Pro</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" id="headerDateDisplay">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Actions -->
+            <div class="flex items-center gap-2">
+                <!-- Short-cut help button -->
+                <button id="shortcutsBtn" class="p-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Keyboard Shortcuts (?)">
+                    <i class="fa-solid fa-keyboard text-sm"></i>
+                </button>
+
+                <!-- Data Import / Export Menu -->
+                <div class="relative inline-block text-left">
+                    <button id="dataMenuBtn" class="p-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Import / Export Data">
+                        <i class="fa-solid fa-database text-sm"></i>
+                    </button>
+                    <!-- Dropdown -->
+                    <div id="dataDropdown" class="hidden absolute right-0 mt-2 w-48 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-1 z-50 text-xs">
+                        <button id="exportJsonBtn" class="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300">
+                            <i class="fa-solid fa-file-export text-brand-500"></i> Export JSON
+                        </button>
+                        <button id="exportCsvBtn" class="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300">
+                            <i class="fa-solid fa-file-csv text-blue-500"></i> Export CSV
+                        </button>
+                        <hr class="border-slate-200 dark:border-slate-800 my-1">
+                        <label class="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer">
+                            <i class="fa-solid fa-file-import text-amber-500"></i> Import JSON
+                            <input type="file" id="importJsonInput" accept=".json" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Dark / Light Theme Toggle -->
+                <button id="themeToggleBtn" class="p-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Toggle Light/Dark Theme">
+                    <i class="fa-solid fa-moon text-sm dark:hidden"></i>
+                    <i class="fa-solid fa-sun text-sm hidden dark:block text-amber-400"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Body -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full flex flex-col gap-6">
+
+        <!-- Top Widgets Grid: Analytics & Input -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Left 8 Cols: Input & Quick Stats -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                
+                <!-- Quick Multi-Task Smart Input Card -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm transition-colors">
+                    <form id="taskForm" class="flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <label for="smartInput" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                <i class="fa-solid fa-bolt text-brand-500"></i>
+                                Smart Task Entry
+                            </label>
+                            <span class="text-[11px] text-slate-400 dark:text-slate-500">Separators: <code class="bg-slate-100 dark:bg-slate-800 px-1 rounded">, ; * _ - .</code> or newlines</span>
+                        </div>
+
+                        <div class="relative">
+                            <textarea 
+                                id="smartInput" 
+                                rows="2" 
+                                placeholder="e.g. Clean desk !high #home, Call Sarah tomorrow at 3pm !med #work, Buy groceries _ Finish report !low"
+                                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 pr-10 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all resize-none custom-scrollbar"
+                            ></textarea>
+                            <span id="inputClearBtn" class="hidden absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1">
+                                <i class="fa-solid fa-xmark text-sm"></i>
+                            </span>
+                        </div>
+
+                        <!-- Parse Syntax Legend & Actions -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                            <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                <span class="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 font-mono">!high</span>
+                                <span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 font-mono">!med</span>
+                                <span class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 font-mono">!low</span>
+                                <span class="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-mono">#tag</span>
+                                <span class="px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-400 font-mono">"tomorrow"</span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <button type="button" id="previewBtn" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium flex items-center gap-1.5">
+                                    <i class="fa-regular fa-eye text-xs"></i>
+                                    <span>Preview Parsed</span>
+                                </button>
+                                <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-slate-950 font-semibold px-4 py-2 rounded-xl transition-all shadow-md shadow-brand-600/20 active:scale-95 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-plus text-xs"></i>
+                                    <span>Add Task(s)</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Category Tags Carousel / Quick Filter Chips -->
+                <div class="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar" id="tagFilterBar">
+                    <button data-tag="ALL" class="tag-chip active px-3 py-1.5 rounded-xl text-xs font-medium bg-brand-500/15 text-brand-500 border border-brand-500/30 shrink-0 flex items-center gap-1.5">
+                        <i class="fa-solid fa-layer-group text-[10px]"></i> All Tags
+                    </button>
+                    <!-- Tag chips injected dynamically -->
+                </div>
+
+            </div>
+
+            <!-- Right 4 Cols: Insights & Stats Widget -->
+            <div class="lg:col-span-4 flex flex-col gap-4">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between h-full">
+                    
+                    <!-- Stats Header -->
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Completion Insights</span>
+                        <span id="streakBadge" class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1">
+                            <i class="fa-solid fa-fire"></i> <span id="streakCount">0</span> Day Streak
+                        </span>
+                    </div>
+
+                    <!-- Progress Bar & Big Percentage -->
+                    <div class="my-2">
+                        <div class="flex items-baseline justify-between mb-1.5">
+                            <span class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white" id="progressPercent">0%</span>
+                            <span class="text-xs font-medium text-slate-500" id="progressRatio">0 of 0 tasks</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700/50">
+                            <div id="progressBar" class="bg-gradient-to-r from-brand-600 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Counters -->
+                    <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-center">
+                        <div class="bg-slate-50 dark:bg-slate-950/50 p-2 rounded-xl">
+                            <p class="text-[10px] text-slate-400 uppercase font-medium">Pending</p>
+                            <p class="text-base font-bold text-slate-800 dark:text-slate-200" id="statPending">0</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-950/50 p-2 rounded-xl">
+                            <p class="text-[10px] text-slate-400 uppercase font-medium">Done Today</p>
+                            <p class="text-base font-bold text-brand-500" id="statDoneToday">0</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-950/50 p-2 rounded-xl">
+                            <p class="text-[10px] text-slate-400 uppercase font-medium">Overdue</p>
+                            <p class="text-base font-bold text-rose-500" id="statOverdue">0</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Task Management Area -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col flex-1 overflow-hidden">
+            
+            <!-- Filter, Search & Sorting Controls Bar -->
+            <div class="p-4 border-b border-slate-200 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-950/30">
+                
+                <!-- Status Filter Tabs -->
+                <div class="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-medium">
+                    <button data-status="all" class="status-tab px-3 py-1.5 rounded-lg transition-all text-brand-600 dark:text-brand-400 bg-white dark:bg-slate-800 shadow-sm">All</button>
+                    <button data-status="active" class="status-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all">Active</button>
+                    <button data-status="overdue" class="status-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all">Overdue</button>
+                    <button data-status="completed" class="status-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all">Completed</button>
+                </div>
+
+                <!-- Search Input & Sort Options -->
+                <div class="flex items-center gap-2.5 flex-1 sm:flex-initial min-w-[240px]">
+                    <!-- Search Field -->
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            placeholder="Search tasks... (/)"
+                            class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500"
+                        />
+                    </div>
+
+                    <!-- Sort Dropdown -->
+                    <select id="sortSelect" class="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-brand-500">
+                        <option value="createdAt_desc">Newest First</option>
+                        <option value="createdAt_asc">Oldest First</option>
+                        <option value="dueDate_asc">Due Soonest</option>
+                        <option value="priority_desc">Highest Priority</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Bulk Actions Bar -->
+            <div id="bulkBar" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-xs transition-all">
+                <div class="flex items-center gap-2">
+                    <button id="bulkCompleteBtn" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none">
+                        <i class="fa-solid fa-check text-[10px] mr-1"></i> Complete All Active
+                    </button>
+                    <button id="clearCompletedBtn" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+                        Clear Completed
+                    </button>
+                </div>
+            </div>
+
+            <!-- Task Items List -->
+            <div class="p-4 flex-1 min-h-[380px] overflow-y-auto custom-scrollbar relative">
+                <ul id="taskList" class="space-y-2.5">
+                    <!-- Task Items dynamically rendered here -->
+                </ul>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-400 dark:text-slate-500">
+                    <div class="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-3 text-slate-400">
+                        <i class="fa-solid fa-list-check text-2xl"></i>
+                    </div>
+                    <p class="font-medium text-slate-700 dark:text-slate-300 text-sm mb-1" id="emptyTitle">No tasks found</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-500 max-w-xs" id="emptySub">Add a task using smart input or change your search filter.</p>
+                </div>
+            </div>
+
+            <!-- Task List Footer info -->
+            <div class="px-4 py-2.5 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/50 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                <span id="activeTasksCount">0 active tasks</span>
+                <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-grip-vertical text-[10px]"></i> Drag tasks to re-order
+                </span>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Modal: Batch Preview Parser -->
+    <div id="previewModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl transition-transform duration-200 scale-95" id="previewModalCard">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 class="font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-brand-500"></i> Batch Parse Preview
+                </h3>
+                <button id="closePreviewModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                Detected <span id="previewCount" class="font-bold text-brand-500">0</span> tasks with parsed metadata:
+            </p>
+
+            <div id="previewList" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar mb-5 pr-1">
+                <!-- Preview items injected here -->
+            </div>
+
+            <div class="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+                <button id="cancelPreviewBtn" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+                <button id="confirmBatchBtn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-slate-950 shadow-md shadow-brand-600/20">Confirm & Add Tasks</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Task Modal -->
+    <div id="editModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl transition-transform duration-200 scale-95" id="editModalCard">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-brand-500"></i> Edit Task
+                </h3>
+                <button id="closeEditModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 mb-5">
+                <div>
+                    <label class="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Title</label>
+                    <input type="text" id="editTitleInput" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Priority</label>
+                        <select id="editPrioritySelect" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500">
+                            <option value="none">Normal (None)</option>
+                            <option value="low">Low Priority</option>
+                            <option value="med">Medium Priority</option>
+                            <option value="high">High Priority</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Due Date</label>
+                        <input type="datetime-local" id="editDueDateInput" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-semibold uppercase text-slate-400 mb-1 block">Tags (comma separated)</label>
+                    <input type="text" id="editTagsInput" placeholder="work, urgent" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button id="cancelEditBtn" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+                <button id="saveEditBtn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-slate-950 shadow-md shadow-brand-600/20">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Keyboard Shortcuts Cheat Sheet -->
+    <div id="shortcutsModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl transition-transform duration-200 scale-95">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 class="font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-keyboard text-brand-500"></i> Keyboard Shortcuts
+                </h3>
+                <button id="closeShortcutsModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+                <div class="flex justify-between items-center py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span class="text-slate-600 dark:text-slate-400">Focus Smart Input</span>
+                    <kbd class="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-[10px] font-mono">Alt + N</kbd>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span class="text-slate-600 dark:text-slate-400">Submit Tasks</span>
+                    <kbd class="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-[10px] font-mono">Ctrl + Enter</kbd>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span class="text-slate-600 dark:text-slate-400">Focus Search Bar</span>
+                    <kbd class="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-[10px] font-mono">/</kbd>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-100 dark:border-slate-800/60">
+                    <span class="text-slate-600 dark:text-slate-400">Close Any Modal</span>
+                    <kbd class="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-[10px] font-mono">Esc</kbd>
+                </div>
+                <div class="flex justify-between items-center py-1">
+                    <span class="text-slate-600 dark:text-slate-400">Open Shortcuts Help</span>
+                    <kbd class="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-[10px] font-mono">?</kbd>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-xs w-full"></div>
+
+    <!-- Application Script Logic -->
+    <script>
+        // --- State Management ---
+        let tasks = JSON.parse(localStorage.getItem('powertask_tasks')) || [];
+        let activeTagFilter = 'ALL';
+        let activeStatusFilter = 'all';
+        let searchQuery = '';
+        let sortBy = 'createdAt_desc';
+        let selectedTaskIds = new Set();
+        let editingTaskId = null;
+        let pendingBatchTasks = [];
+
+        // --- DOM Elements ---
+        const smartInput = document.getElementById('smartInput');
+        const taskForm = document.getElementById('taskForm');
+        const inputClearBtn = document.getElementById('inputClearBtn');
+        const previewBtn = document.getElementById('previewBtn');
+        const taskList = document.getElementById('taskList');
+        const tagFilterBar = document.getElementById('tagFilterBar');
+        const emptyState = document.getElementById('emptyState');
+        const emptyTitle = document.getElementById('emptyTitle');
+        const emptySub = document.getElementById('emptySub');
+        const headerDateDisplay = document.getElementById('headerDateDisplay');
+
+        // Search and Stats Elements
+        const searchInput = document.getElementById('searchInput');
+        const sortSelect = document.getElementById('sortSelect');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressRatio = document.getElementById('progressRatio');
+        const progressBar = document.getElementById('progressBar');
+        const statPending = document.getElementById('statPending');
+        const statDoneToday = document.getElementById('statDoneToday');
+        const statOverdue = document.getElementById('statOverdue');
+        const streakCount = document.getElementById('streakCount');
+        const activeTasksCount = document.getElementById('activeTasksCount');
+
+        // Bulk Actions Elements
+        const bulkBar = document.getElementById('bulkBar');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const selectedCount = document.getElementById('selectedCount');
+        const bulkCompleteBtn = document.getElementById('bulkCompleteBtn');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+
+        // Modal Elements
+        const previewModal = document.getElementById('previewModal');
+        const previewModalCard = document.getElementById('previewModalCard');
+        const previewList = document.getElementById('previewList');
+        const previewCount = document.getElementById('previewCount');
+        const confirmBatchBtn = document.getElementById('confirmBatchBtn');
+
+        const editModal = document.getElementById('editModal');
+        const editModalCard = document.getElementById('editModalCard');
+        const editTitleInput = document.getElementById('editTitleInput');
+        const editPrioritySelect = document.getElementById('editPrioritySelect');
+        const editDueDateInput = document.getElementById('editDueDateInput');
+        const editTagsInput = document.getElementById('editTagsInput');
+        const saveEditBtn = document.getElementById('saveEditBtn');
+
+        const shortcutsModal = document.getElementById('shortcutsModal');
+
+        // --- App Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            updateHeaderDate();
+            setupEventListeners();
+            renderApp();
+        });
+
+        // --- Theme Handler ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('powertask_theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        }
+
+        document.getElementById('themeToggleBtn').addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('powertask_theme', isDark ? 'dark' : 'light');
+            showToast(isDark ? 'Switched to Dark Mode' : 'Switched to Light Mode', 'info');
+        });
+
+        // --- Toast System ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let iconClass = 'fa-circle-check text-brand-500';
+            if (type === 'danger') iconClass = 'fa-circle-xmark text-rose-500';
+            if (type === 'info') iconClass = 'fa-circle-info text-blue-500';
+
+            toast.className = 'toast flex items-center gap-3 p-3.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-xl shadow-xl border border-slate-800 dark:border-slate-200 text-xs font-medium';
+            toast.innerHTML = `
+                <i class="fa-solid ${iconClass} text-sm"></i>
+                <span class="flex-1">${message}</span>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.2s ease';
+                setTimeout(() => toast.remove(), 200);
+            }, 2800);
+        }
+
+        // --- Natural Language & Priority Parser ---
+        function parseSmartInput(rawInput) {
+            if (!rawInput.trim()) return [];
+
+            // Split string using separators: commas, semicolons, asterisks, space-dashes, space-underscores, periods with space, or newlines
+            const delimiterRegex = /\r?\n|[,;*]|\s+[-_]|[-_]\s+|\.\s+/g;
+            const entries = rawInput.split(delimiterRegex);
+
+            const parsedResults = [];
+
+            entries.forEach(entry => {
+                // Trim leading symbols like -, _, *, punctuation, and spaces
+                let text = entry.replace(/^[\s\-_*;,.]+/g, '').trim();
+                if (!text) return;
+
+                let priority = 'none';
+                let tags = [];
+                let dueDate = null;
+
+                // 1. Detect Priority (!high, !med, !low)
+                if (/\!high\b/i.test(text)) {
+                    priority = 'high';
+                    text = text.replace(/\!high\b/gi, '');
+                } else if (/\!med\b/i.test(text)) {
+                    priority = 'med';
+                    text = text.replace(/\!med\b/gi, '');
+                } else if (/\!low\b/i.test(text)) {
+                    priority = 'low';
+                    text = text.replace(/\!low\b/gi, '');
+                }
+
+                // 2. Detect Tags (#tag)
+                const tagMatches = text.match(/#([\w\-]+)/g);
+                if (tagMatches) {
+                    tagMatches.forEach(t => {
+                        const cleanTag = t.replace('#', '').toLowerCase();
+                        if (!tags.includes(cleanTag)) tags.push(cleanTag);
+                    });
+                    text = text.replace(/#([\w\-]+)/g, '');
+                }
+
+                // 3. Detect Smart Natural Language Dates
+                const now = new Date();
+                
+                if (/\btomorrow\b/i.test(text)) {
+                    const tom = new Date(now);
+                    tom.setDate(tom.getDate() + 1);
+
+                    // Check if time specified, e.g. "at 5pm" or "at 17:00"
+                    const timeMatch = text.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i);
+                    if (timeMatch) {
+                        let hours = parseInt(timeMatch[1]);
+                        const mins = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+                        const mer = timeMatch[3] ? timeMatch[3].toLowerCase() : null;
+
+                        if (mer === 'pm' && hours < 12) hours += 12;
+                        if (mer === 'am' && hours === 12) hours = 0;
+                        tom.setHours(hours, mins, 0, 0);
+                        text = text.replace(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/gi, '');
+                    } else {
+                        tom.setHours(18, 0, 0, 0); // Default to 6 PM
+                    }
+                    dueDate = tom.toISOString();
+                    text = text.replace(/\btomorrow\b/gi, '');
+                } else if (/\btoday\b/i.test(text)) {
+                    const todayDate = new Date(now);
+                    todayDate.setHours(20, 0, 0, 0);
+                    dueDate = todayDate.toISOString();
+                    text = text.replace(/\btoday\b/gi, '');
+                } else if (/\bnext monday\b/i.test(text)) {
+                    const nextMon = new Date(now);
+                    nextMon.setDate(nextMon.getDate() + ((1 + 7 - nextMon.getDay()) % 7 || 7));
+                    nextMon.setHours(10, 0, 0, 0);
+                    dueDate = nextMon.toISOString();
+                    text = text.replace(/\bnext monday\b/gi, '');
+                }
+
+                // Final Clean title
+                text = text.replace(/\s+/g, ' ').trim();
+
+                if (text) {
+                    parsedResults.push({
+                        id: (Date.now() + Math.random()).toString(),
+                        title: text,
+                        completed: false,
+                        priority: priority,
+                        tags: tags,
+                        dueDate: dueDate,
+                        createdAt: new Date().toISOString(),
+                        completedAt: null
+                    });
+                }
+            });
+
+            return parsedResults;
+        }
+
+        // --- Actions & Processing ---
+        function addParsedTasks(newTasks) {
+            if (!newTasks || newTasks.length === 0) return;
+            
+            tasks.unshift(...newTasks);
+            saveStorage();
+            renderApp();
+            showToast(`Added ${newTasks.length} new task${newTasks.length > 1 ? 's' : ''}`);
+        }
+
+        function saveStorage() {
+            localStorage.setItem('powertask_tasks', JSON.stringify(tasks));
+        }
+
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            // Task Form Input
+            taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const parsed = parseSmartInput(smartInput.value);
+                if (parsed.length > 0) {
+                    addParsedTasks(parsed);
+                    smartInput.value = '';
+                    inputClearBtn.classList.add('hidden');
+                }
+            });
+
+            smartInput.addEventListener('input', () => {
+                if (smartInput.value.trim().length > 0) {
+                    inputClearBtn.classList.remove('hidden');
+                } else {
+                    inputClearBtn.classList.add('hidden');
+                }
+            });
+
+            inputClearBtn.addEventListener('click', () => {
+                smartInput.value = '';
+                inputClearBtn.classList.add('hidden');
+                smartInput.focus();
+            });
+
+            // Preview Modal Trigger
+            previewBtn.addEventListener('click', () => {
+                const parsed = parseSmartInput(smartInput.value);
+                if (parsed.length === 0) {
+                    showToast('Please type a task to preview', 'info');
+                    return;
+                }
+                pendingBatchTasks = parsed;
+                showPreviewModal();
+            });
+
+            confirmBatchBtn.addEventListener('click', () => {
+                addParsedTasks(pendingBatchTasks);
+                smartInput.value = '';
+                inputClearBtn.classList.add('hidden');
+                hidePreviewModal();
+            });
+
+            // Status Tabs
+            document.querySelectorAll('.status-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.status-tab').forEach(t => {
+                        t.className = 'status-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all';
+                    });
+                    tab.className = 'status-tab px-3 py-1.5 rounded-lg transition-all text-brand-600 dark:text-brand-400 bg-white dark:bg-slate-800 shadow-sm';
+                    activeStatusFilter = tab.getAttribute('data-status');
+                    renderApp();
+                });
+            });
+
+            // Search and Sort
+            searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase().trim();
+                renderApp();
+            });
+
+            sortSelect.addEventListener('change', (e) => {
+                sortBy = e.target.value;
+                renderApp();
+            });
+
+            // Bulk Actions
+            bulkCompleteBtn.addEventListener('click', () => {
+                const activeTasks = tasks.filter(t => !t.completed);
+                if (activeTasks.length === 0) return;
+
+                tasks = tasks.map(t => ({
+                    ...t,
+                    completed: true,
+                    completedAt: t.completed ? t.completedAt : new Date().toISOString()
+                }));
+                showToast(`Marked ${activeTasks.length} active tasks as complete`);
+                saveStorage();
+                renderApp();
+            });
+
+            clearCompletedBtn.addEventListener('click', () => {
+                const completedCount = tasks.filter(t => t.completed).length;
+                if (completedCount === 0) {
+                    showToast('No completed tasks to clear', 'info');
+                    return;
+                }
+                tasks = tasks.filter(t => !t.completed);
+                selectedTaskIds.clear();
+                saveStorage();
+                renderApp();
+                showToast(`Cleared ${completedCount} completed tasks`, 'info');
+            });
+
+            // Data Menu Dropdown
+            const dataMenuBtn = document.getElementById('dataMenuBtn');
+            const dataDropdown = document.getElementById('dataDropdown');
+            dataMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dataDropdown.classList.toggle('hidden');
+            });
+            document.addEventListener('click', () => dataDropdown.classList.add('hidden'));
+
+            // JSON & CSV Export / Import
+            document.getElementById('exportJsonBtn').addEventListener('click', exportJSON);
+            document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+            document.getElementById('importJsonInput').addEventListener('change', importJSON);
+
+            // Modal Closes
+            document.getElementById('closePreviewModal').addEventListener('click', hidePreviewModal);
+            document.getElementById('cancelPreviewBtn').addEventListener('click', hidePreviewModal);
+
+            document.getElementById('closeEditModal').addEventListener('click', hideEditModal);
+            document.getElementById('cancelEditBtn').addEventListener('click', hideEditModal);
+            saveEditBtn.addEventListener('click', saveEditTask);
+
+            document.getElementById('shortcutsBtn').addEventListener('click', showShortcutsModal);
+            document.getElementById('closeShortcutsModal').addEventListener('click', hideShortcutsModal);
+
+            // Global Keyboard Shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Esc key closes modals
+                if (e.key === 'Escape') {
+                    hidePreviewModal();
+                    hideEditModal();
+                    hideShortcutsModal();
+                }
+                // Ctrl + Enter submits smart task form
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    taskForm.requestSubmit();
+                }
+                // '/' Key focuses search bar
+                if (e.key === '/' && document.activeElement !== smartInput && document.activeElement !== editTitleInput && document.activeElement !== searchInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+                // '?' key toggles shortcut modal
+                if (e.key === '?' && document.activeElement !== smartInput && document.activeElement !== editTitleInput && document.activeElement !== searchInput) {
+                    e.preventDefault();
+                    showShortcutsModal();
+                }
+                // Alt + N focuses smart input
+                if (e.altKey && e.key.toLowerCase() === 'n') {
+                    e.preventDefault();
+                    smartInput.focus();
+                }
+            });
+        }
+
+        // --- Render Main View ---
+        function renderApp() {
+            renderTagFilterBar();
+            renderTaskListOnly();
+            renderStatsAndInsights();
+            updateBulkBarState();
+        }
+
+        function getFilteredTasks() {
+            let result = [...tasks];
+
+            // 1. Tag Filter
+            if (activeTagFilter !== 'ALL') {
+                result = result.filter(t => t.tags && t.tags.includes(activeTagFilter));
+            }
+
+            // 2. Status Filter
+            const now = new Date();
+            if (activeStatusFilter === 'active') {
+                result = result.filter(t => !t.completed);
+            } else if (activeStatusFilter === 'completed') {
+                result = result.filter(t => t.completed);
+            } else if (activeStatusFilter === 'overdue') {
+                result = result.filter(t => !t.completed && t.dueDate && new Date(t.dueDate) < now);
+            }
+
+            // 3. Search Query
+            if (searchQuery) {
+                result = result.filter(t => 
+                    t.title.toLowerCase().includes(searchQuery) ||
+                    (t.tags && t.tags.some(tag => tag.toLowerCase().includes(searchQuery)))
+                );
+            }
+
+            // 4. Sorting
+            result.sort((a, b) => {
+                if (sortBy === 'createdAt_desc') return new Date(b.createdAt) - new Date(a.createdAt);
+                if (sortBy === 'createdAt_asc') return new Date(a.createdAt) - new Date(b.createdAt);
+                if (sortBy === 'dueDate_asc') {
+                    if (!a.dueDate) return 1;
+                    if (!b.dueDate) return -1;
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                }
+                if (sortBy === 'priority_desc') {
+                    const weight = { high: 3, med: 2, low: 1, none: 0 };
+                    return weight[b.priority] - weight[a.priority];
+                }
+                return 0;
+            });
+
+            return result;
+        }
+
+        function renderTagFilterBar() {
+            // Extract unique tags
+            const allTags = new Set();
+            tasks.forEach(t => {
+                if (t.tags) t.tags.forEach(tag => allTags.add(tag));
+            });
+
+            tagFilterBar.innerHTML = `
+                <button data-tag="ALL" class="tag-chip ${activeTagFilter === 'ALL' ? 'active bg-brand-500/15 text-brand-500 border-brand-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'} px-3 py-1.5 rounded-xl text-xs font-medium border shrink-0 flex items-center gap-1.5 transition-colors">
+                    <i class="fa-solid fa-layer-group text-[10px]"></i> All Tags
+                </button>
+            `;
+
+            allTags.forEach(tag => {
+                const isActive = activeTagFilter === tag;
+                const btn = document.createElement('button');
+                btn.setAttribute('data-tag', tag);
+                btn.className = `tag-chip ${isActive ? 'bg-purple-500/20 text-purple-400 border-purple-500/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'} px-3 py-1.5 rounded-xl text-xs font-medium border shrink-0 flex items-center gap-1 transition-colors`;
+                btn.innerHTML = `<i class="fa-solid fa-hashtag text-[10px] text-purple-400"></i> ${escapeHtml(tag)}`;
+                btn.addEventListener('click', () => {
+                    activeTagFilter = tag;
+                    renderApp();
+                });
+                tagFilterBar.appendChild(btn);
+            });
+
+            // Handle All tag click
+            tagFilterBar.querySelector('[data-tag="ALL"]').addEventListener('click', () => {
+                activeTagFilter = 'ALL';
+                renderApp();
+            });
+        }
+
+        function renderTaskListOnly() {
+            const filtered = getFilteredTasks();
+            taskList.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(task => {
+                const li = document.createElement('li');
+                li.setAttribute('data-id', task.id);
+                li.draggable = true;
+
+                // Priority Badge
+                let priorityBadge = '';
+                if (task.priority === 'high') {
+                    priorityBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-500 border border-rose-500/20"><i class="fa-solid fa-triangle-exclamation mr-1"></i>High</span>`;
+                } else if (task.priority === 'med') {
+                    priorityBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Med</span>`;
+                } else if (task.priority === 'low') {
+                    priorityBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-500/10 text-blue-500 border border-blue-500/20">Low</span>`;
+                }
+
+                // Due Date Badge
+                let dueDateHtml = '';
+                if (task.dueDate) {
+                    const dueObj = new Date(task.dueDate);
+                    const now = new Date();
+                    const isOverdue = !task.completed && dueObj < now;
+                    const dueFormatted = dueObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+                    dueDateHtml = `
+                        <span class="text-[11px] font-medium flex items-center gap-1 ${isOverdue ? 'text-rose-500' : 'text-slate-400 dark:text-slate-500'}">
+                            <i class="fa-regular fa-calendar-check text-[10px]"></i> ${dueFormatted} ${isOverdue ? '(Overdue)' : ''}
+                        </span>
+                    `;
+                }
+
+                // Tag Badges
+                let tagsHtml = '';
+                if (task.tags && task.tags.length > 0) {
+                    tagsHtml = task.tags.map(tag => `
+                        <span class="px-2 py-0.5 rounded-md text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 font-medium">#${escapeHtml(tag)}</span>
+                    `).join('');
+                }
+
+                // STRICT REQUIREMENT: Completed tasks have 10% opacity class + strike
+                li.className = `group flex items-start justify-between p-3.5 bg-slate-50/70 dark:bg-slate-950/60 hover:bg-slate-100 dark:hover:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl transition-all duration-200 animate-slide-in cursor-grab ${
+                    task.completed ? 'task-completed' : ''
+                }`;
+
+                li.innerHTML = `
+                    <div class="flex items-start gap-3 flex-1 min-w-0 pr-2">
+                        <!-- Strictly SINGLE Custom Checkbox Toggle -->
+                        <input 
+                            type="checkbox" 
+                            class="custom-task-checkbox"
+                            ${task.completed ? 'checked' : ''}
+                            onchange="toggleTask('${task.id}')"
+                            title="Toggle Completion"
+                        />
+
+                        <!-- Task Core Info -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-1">
+                                <span class="task-title text-sm font-medium text-slate-900 dark:text-slate-100 break-words leading-snug">
+                                    ${escapeHtml(task.title)}
+                                </span>
+                                ${priorityBadge}
+                                ${tagsHtml}
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 dark:text-slate-500">
+                                <span><i class="fa-regular fa-clock mr-1"></i>${formatTimestamp(task.createdAt)}</span>
+                                ${dueDateHtml}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item Controls -->
+                    <div class="flex items-center gap-1 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button onclick="copyTaskTitle('${task.id}')" class="p-1.5 text-slate-400 hover:text-emerald-500 rounded-lg transition-colors" title="Copy Task Text">
+                            <i class="fa-regular fa-clipboard text-xs"></i>
+                        </button>
+                        <button onclick="openEditModal('${task.id}')" class="p-1.5 text-slate-400 hover:text-brand-500 rounded-lg transition-colors" title="Edit Task">
+                            <i class="fa-solid fa-pen-to-square text-xs"></i>
+                        </button>
+                        <button onclick="deleteTask('${task.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition-colors" title="Delete Task">
+                            <i class="fa-regular fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+
+                // Add Drag Events for Drag-and-Drop
+                li.addEventListener('dragstart', () => li.classList.add('dragging'));
+                li.addEventListener('dragend', () => {
+                    li.classList.remove('dragging');
+                    saveDragReorder();
+                });
+
+                taskList.appendChild(li);
+            });
+
+            // Enable Drag Over Container
+            taskList.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const draggingItem = document.querySelector('.dragging');
+                if (!draggingItem) return;
+                const siblings = [...taskList.querySelectorAll('li:not(.dragging)')];
+                const nextSibling = siblings.find(sibling => {
+                    return e.clientY <= sibling.getBoundingClientRect().top + sibling.getBoundingClientRect().height / 2;
+                });
+                taskList.insertBefore(draggingItem, nextSibling);
+            });
+        }
+
+        function saveDragReorder() {
+            const reorderedIds = [...taskList.querySelectorAll('li')].map(el => el.getAttribute('data-id'));
+            const newTasksList = [];
+            
+            reorderedIds.forEach(id => {
+                const found = tasks.find(t => t.id === id);
+                if (found) newTasksList.push(found);
+            });
+
+            // Add any remaining filtered-out tasks back
+            tasks.forEach(t => {
+                if (!newTasksList.some(nt => nt.id === t.id)) {
+                    newTasksList.push(t);
+                }
+            });
+
+            tasks = newTasksList;
+            saveStorage();
+        }
+
+        function renderStatsAndInsights() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            const pending = total - completed;
+
+            const now = new Date();
+            const overdue = tasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate) < now).length;
+
+            // Done today counter
+            const todayStr = new Date().toDateString();
+            const doneToday = tasks.filter(t => t.completed && t.completedAt && new Date(t.completedAt).toDateString() === todayStr).length;
+
+            const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+            progressPercent.textContent = `${percent}%`;
+            progressRatio.textContent = `${completed} of ${total} tasks`;
+            progressBar.style.width = `${percent}%`;
+
+            statPending.textContent = pending;
+            statDoneToday.textContent = doneToday;
+            statOverdue.textContent = overdue;
+            activeTasksCount.textContent = `${pending} active tasks`;
+
+            // Simple streak counter based on completed tasks
+            const streak = doneToday > 0 ? Math.min(doneToday + 1, 30) : (completed > 0 ? 1 : 0);
+            streakCount.textContent = streak;
+        }
+
+        function updateBulkBarState() {
+            const hasActiveTasks = tasks.some(t => !t.completed);
+            bulkCompleteBtn.disabled = !hasActiveTasks;
+        }
+
+        // --- Task Item Actions ---
+        function copyTaskTitle(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            // Fallback execCommand for iFrame context compatibility
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = task.title;
+            tempTextArea.style.position = 'fixed';
+            tempTextArea.style.opacity = '0';
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast('Task title copied to clipboard!', 'info');
+            } catch (err) {
+                showToast('Failed to copy task', 'danger');
+            } finally {
+                document.body.removeChild(tempTextArea);
+            }
+        }
+
+        function toggleTask(id) {
+            tasks = tasks.map(t => {
+                if (t.id === id) {
+                    const isNowDone = !t.completed;
+                    return {
+                        ...t,
+                        completed: isNowDone,
+                        completedAt: isNowDone ? new Date().toISOString() : null
+                    };
+                }
+                return t;
+            });
+            saveStorage();
+            renderApp();
+            showToast('Task status updated');
+        }
+
+        function deleteTask(id) {
+            const el = document.querySelector(`[data-id="${id}"]`);
+            if (el) {
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(20px)';
+                el.style.transition = 'all 0.2s ease';
+                setTimeout(() => {
+                    tasks = tasks.filter(t => t.id !== id);
+                    selectedTaskIds.delete(id);
+                    saveStorage();
+                    renderApp();
+                    showToast('Task deleted', 'danger');
+                }, 200);
+            }
+        }
+
+        // --- Modal Control Functions ---
+        function showPreviewModal() {
+            previewCount.textContent = pendingBatchTasks.length;
+            previewList.innerHTML = '';
+
+            pendingBatchTasks.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs flex flex-col gap-1';
+                
+                let tagsHtml = item.tags.map(t => `<span class="text-purple-400 font-mono">#${t}</span>`).join(' ');
+                let prioHtml = item.priority !== 'none' ? `<span class="font-bold uppercase text-amber-500">[${item.priority}]</span>` : '';
+                
+                div.innerHTML = `
+                    <div class="font-medium text-slate-800 dark:text-slate-200">${escapeHtml(item.title)}</div>
+                    <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                        ${prioHtml} ${tagsHtml} ${item.dueDate ? `<span>Due: ${new Date(item.dueDate).toLocaleString()}</span>` : ''}
+                    </div>
+                `;
+                previewList.appendChild(div);
+            });
+
+            previewModal.classList.remove('hidden');
+            setTimeout(() => {
+                previewModal.classList.remove('opacity-0');
+                previewModalCard.classList.remove('scale-95');
+                previewModalCard.classList.add('scale-100');
+            }, 10);
+        }
+
+        function hidePreviewModal() {
+            previewModal.classList.add('opacity-0');
+            previewModalCard.classList.remove('scale-100');
+            previewModalCard.classList.add('scale-95');
+            setTimeout(() => previewModal.classList.add('hidden'), 200);
+        }
+
+        function openEditModal(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            editingTaskId = id;
+            editTitleInput.value = task.title;
+            editPrioritySelect.value = task.priority || 'none';
+            editTagsInput.value = task.tags ? task.tags.join(', ') : '';
+
+            if (task.dueDate) {
+                const d = new Date(task.dueDate);
+                // format for datetime-local
+                const localISO = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                editDueDateInput.value = localISO;
+            } else {
+                editDueDateInput.value = '';
+            }
+
+            editModal.classList.remove('hidden');
+            setTimeout(() => {
+                editModal.classList.remove('opacity-0');
+                editModalCard.classList.remove('scale-95');
+                editModalCard.classList.add('scale-100');
+                editTitleInput.focus();
+            }, 10);
+        }
+
+        function hideEditModal() {
+            editModal.classList.add('opacity-0');
+            editModalCard.classList.remove('scale-100');
+            editModalCard.classList.add('scale-95');
+            setTimeout(() => {
+                editModal.classList.add('hidden');
+                editingTaskId = null;
+            }, 200);
+        }
+
+        function saveEditTask() {
+            if (!editingTaskId) return;
+            const title = editTitleInput.value.trim();
+            if (!title) return;
+
+            const priority = editPrioritySelect.value;
+            const tags = editTagsInput.value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+            const dueDate = editDueDateInput.value ? new Date(editDueDateInput.value).toISOString() : null;
+
+            tasks = tasks.map(t => {
+                if (t.id === editingTaskId) {
+                    return { ...t, title, priority, tags, dueDate };
+                }
+                return t;
+            });
+
+            saveStorage();
+            hideEditModal();
+            renderApp();
+            showToast('Task changes saved');
+        }
+
+        function showShortcutsModal() {
+            shortcutsModal.classList.remove('hidden');
+            setTimeout(() => shortcutsModal.classList.remove('opacity-0'), 10);
+        }
+
+        function hideShortcutsModal() {
+            shortcutsModal.classList.add('opacity-0');
+            setTimeout(() => shortcutsModal.classList.add('hidden'), 200);
+        }
+
+        // --- Data Import/Export Helpers ---
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks, null, 2));
+            downloadFile(dataStr, `powertask_backup_${new Date().toISOString().slice(0,10)}.json`);
+            showToast('Exported tasks to JSON');
+        }
+
+        function exportCSV() {
+            if (tasks.length === 0) {
+                showToast('No tasks to export', 'info');
+                return;
+            }
+            let csv = "ID,Title,Completed,Priority,Tags,DueDate,CreatedAt\n";
+            tasks.forEach(t => {
+                const tagsStr = t.tags ? t.tags.join(';') : '';
+                csv += `"${t.id}","${t.title.replace(/"/g, '""')}",${t.completed},"${t.priority}","${tagsStr}","${t.dueDate || ''}","${t.createdAt}"\n`;
+            });
+            const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+            downloadFile(dataStr, `powertask_export_${new Date().toISOString().slice(0,10)}.csv`);
+            showToast('Exported tasks to CSV');
+        }
+
+        function importJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const imported = JSON.parse(event.target.result);
+                    if (Array.isArray(imported)) {
+                        tasks = imported;
+                        saveStorage();
+                        renderApp();
+                        showToast(`Successfully imported ${imported.length} tasks`);
+                    } else {
+                        showToast('Invalid JSON file format', 'danger');
+                    }
+                } catch (err) {
+                    showToast('Failed to parse JSON file', 'danger');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadFile(content, fileName) {
+            const link = document.createElement('a');
+            link.setAttribute('href', content);
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        // --- Helpers ---
+        function updateHeaderDate() {
+            const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+            headerDateDisplay.textContent = new Date().toLocaleDateString('en-US', options);
+        }
+
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
